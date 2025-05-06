@@ -2,8 +2,6 @@
 
 This is prototype Python/Postgres implementation of [Memelang v4](https://memelang.net/04/). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
 
-## Files
-
 | File | Purpose |
 |------|---------------------------------------------------------------------|
 | **app.py** | Command-line interfaces |
@@ -36,12 +34,26 @@ Installation on Ubuntu:
 	CREATE INDEX IF NOT EXISTS meme_bid_idx ON meme (bid);
 	ALTER TABLE meme ADD CONSTRAINT alp_xor_amt CHECK ((alp IS NOT NULL) <> (amt IS NOT NULL));
 
-## Example CLI Usage
+## Example Python Usage
 
-Execute a query:
+	import memesql
+
+	# Convert a Memelang string to a meme token list
+	memes = memesql.decode("student=JohnAdams =")
+
+	# Convert a meme token list to an SQL query
+	sqlstr, params = memesql.select(memes)
+
+	# Return result Memelang string from database for a Memelang query
+	result_meme_str = memesql.dbget("student=JohnAdams =")
+
+
+## Example CLI Usage
 
 	python3 ./app.py q "student=JohnAdams ="
 
+	# OUTPUT:
+	b=1234 student="JohnAdams" college="Harvard"
 
 ## Legal
 
