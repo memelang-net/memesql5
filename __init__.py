@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-__version__ 	= "5.0.9"
-__title__		= "memelang"
+__version__ 	= "5.0.10"
+__title__		= "memesql"
 __summary__		= "A compact graph-relational query language"
 __uri__			= "https://memelang.net/"
 __author__		= "Bri Holt"

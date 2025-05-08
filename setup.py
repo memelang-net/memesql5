@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-	name="memelang",
+	name="memesql",
 	version="5.0.9",
 	author="Bri Holt",
 	author_email="info@memelang.net",

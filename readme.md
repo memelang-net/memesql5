@@ -25,32 +25,27 @@ Installation on Ubuntu:
 	git clone https://github.com/memelang-net/memesql5.git memesql
 	cd memesql
 
-## Database table
+	# Edit conf.py as you like
 
-	CREATE TABLE IF NOT EXISTS meme (rel TEXT, alp TEXT, amt NUMERIC(18, 6), bid BIGINT);
-	CREATE INDEX IF NOT EXISTS meme_rel_idx ON meme ((LOWER(rel)));
-	CREATE INDEX IF NOT EXISTS meme_alp_idx ON meme ((LOWER(alp))) WHERE alp IS NOT NULL;
-	CREATE INDEX IF NOT EXISTS meme_amt_idx ON meme (amt) WHERE amt IS NOT NULL;
-	CREATE INDEX IF NOT EXISTS meme_bid_idx ON meme (bid);
-	ALTER TABLE meme ADD CONSTRAINT alp_xor_amt CHECK ((alp IS NOT NULL) <> (amt IS NOT NULL));
+	# Create database
+	sudo -u postgres bash -c 'python3 ./app.py install | psql'
 
 ## Example Python Usage
 
 	import memesql
 
 	# Convert a Memelang string to a meme token list
-	memes = memesql.decode("student=JohnAdams =")
+	memes = memesql.decode('student=JohnAdams =')
 
 	# Convert a meme token list to an SQL query
 	sqlstr, params = memesql.select(memes)
 
 	# Return result Memelang string from database for a Memelang query
-	result_meme_str = memesql.dbget("student=JohnAdams =")
-
+	result_meme_str = memesql.dbget('student=JohnAdams =')
 
 ## Example CLI Usage
 
-	python3 ./app.py q "student=JohnAdams ="
+	python3 ./app.py q 'student=JohnAdams ='
 
 	# OUTPUT:
 	b=1234 student="JohnAdams" college="Harvard"

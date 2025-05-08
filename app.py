@@ -1,9 +1,12 @@
-import sys, parse, sql, db
+#!/usr/bin/env python3
+import sys, parse, sql
 
 def dbget (memestr: str):
-	return db.oselect(*sql.select(parse.decode(memestr)))
+	import db
+	return db.select(*sql.select(parse.decode(memestr)))
 
 def dbadd (memestr: str):
+	import db
 	return db.exec(*sql.insert(parse.decode(memestr)))
 
 
@@ -25,3 +28,7 @@ if __name__ == "__main__":
 	elif sys.argv[1]=='i':
 		dbadd(sys.argv[2])
 		print('status=success')
+
+	elif sys.argv[1]=='install':
+		from db import DB_ADD
+		print(DB_ADD)

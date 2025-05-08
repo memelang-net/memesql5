@@ -1,14 +1,15 @@
-import re, json
-
 # Memelang.net | (c) HOLTWORK LLC | Patents Pending
 # Encode and decode Memelang string to list
 # pair = [r operator, r value, a operator, a value]
 # meme = pair list = [pair, ...]
 # memes = meme list = pair list list = [[pair, ...], ...]
 
-SCOL, SEQL, SOUT = 0, 1, 2 							# name for each slot in memopr[opr] list
-BID, RID, AID, VAR = 'bid', 'rel', 'aid', 'var'		# name for each column in memopr[opr][SCOL]
-END, SPC, NOT = ';', ' ', '!'						# Special characters
+import re, json
+
+SCOL, SEQL, SOUT = 0, 1, 2 			# name for each slot in memopr[opr] list
+BID, RID, AID = 'm', 'r', 'a'		# name for each column in memopr[opr][SCOL]
+END, SPC, NOT = ';', ' ', '!'		# Special characters
+AS, RS, MS = '@', '~', '#'			# Var symbols
 
 memopr = { # operator characters and their settings
 	None	: (None,	None,	None),
@@ -21,16 +22,15 @@ memopr = { # operator characters and their settings
 	'<'		: (AID,		'<',	'<'),
 	'>='	: (AID,		'>=',	'>='),
 	'<='	: (AID,		'<=',	'<='),
-
-	':='	: (VAR,		None,	':='),
 }
 
 STREQL = ('=','!=') # String equalities
 RE_DIV = re.compile(r'([\s;\]]+)') # Dividers between pairs
 RE_QOT = re.compile(r'("(?:(?:\\.)|[^"\\])*")') # String between quotes
 RE_NUM = re.compile(r'^[+-]?\d+(?:\.\d+)?$') # Matches non-numeric chars, must be string
-RE_ALP = re.compile(r'[^a-zA-Z0-9_\$\#]') # Complex string must be wrapped in quotes
-RE_PAR = re.compile(r"(!)?([a-zA-Z0-9_\$\#]*)(>=|<=|!=|=|>|<)?([a-zA-Z0-9_\$\#\.\-\+]*)") # !R>=A
+RE_ALP = re.compile(r'[^a-zA-Z0-9_\$\#\~\@]') # Complex string must be wrapped in quotes
+RE_VAR = re.compile(r'[\@\~\#\$]') # Variable symbols
+RE_PAR = re.compile(r"(!)?([a-zA-Z0-9_\$\#\~\@]*)(>=|<=|!=|=|>|<)?([a-zA-Z0-9_\$\#\~\@\.\-\+]*)") # !R>=A
 
 # Input: Memelang string as "R=A:B R>A:B R<=A <=A =:B !R=A"
 # Output: memes
@@ -79,11 +79,15 @@ def decode(memestr: str) -> list[list[list]]:
 
 			# Check values
 			if rv == '': rv = None
+			else:
+				rv = str(rv)
+				if RE_VAR.match(rv[1:]): raise ValueError(f'Bad rv: {rv}')
+
 			if av == '': av = None
 			elif RE_NUM.fullmatch(av): av=json.loads(av) # numeric
 			else:
-				if memopr[ao][SEQL] not in STREQL: raise Exception(f"Bad str ao: {ao} for {av}")
-				av=av.replace('#','$')
+				if memopr[ao][SEQL] not in STREQL: raise Exception(f"Bad ao: {ao} for {av}")
+				if RE_VAR.match(av[1:]): raise ValueError(f'Bad av: {av}')
 
 			meme.append([ro, rv, ao, av])
 
