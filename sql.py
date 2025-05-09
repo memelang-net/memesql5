@@ -49,7 +49,7 @@ def selectify(meme: list[list], table: str = None, t:int = 0) -> tuple[str, list
 			sel += f"""|| (CASE WHEN t{t}.amt IS NOT NULL THEN t{t}.amt::text ELSE '"' || t{t}.alp || '"' END)"""
 		
 		# Where
-		for c, e, v in (('r', memopr[ro][SEQL], rvl), (acol, memopr[ao][SEQL], avl)):
+		for c, e, v in (('r', OPR[ro][SEQL], rvl), (acol, OPR[ao][SEQL], avl)):
 			if v is None or not e: continue
 
 			# Variable value, reference previous value
@@ -74,7 +74,7 @@ def selectify(meme: list[list], table: str = None, t:int = 0) -> tuple[str, list
 				params.append(v)
 
 		# set variable
-		if memopr[ro][SEQL] == '=' and rv is not None:
+		if OPR[ro][SEQL] == '=' and rv is not None:
 			vcols[f'{AS}{rv}'] = f"LOWER(t{t}.alp)" if acol=='alp' else f"t{t}.amt"
 		last_acol = acol
 
@@ -144,7 +144,7 @@ def insert (memes: list[list[list]], table: str = None) -> tuple[str, list]:
 
 		mv = None
 		for (ro, rv, ao, av) in meme:
-			if memopr[ro][SEQL] != '=': raise ValueError(f'bad ro {ro}')
+			if OPR[ro][SEQL] != '=': raise ValueError(f'bad ro {ro}')
 			elif ao != '=': raise ValueError(f'bad ao {ao}')
 			elif rv is None: raise ValueError(f'no rv')
 			elif av is None: raise ValueError(f'no av')

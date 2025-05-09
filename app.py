@@ -32,3 +32,24 @@ if __name__ == "__main__":
 	elif sys.argv[1]=='install':
 		from db import DB_ADD
 		print(DB_ADD)
+
+	elif sys.argv[1]=='test':
+		known = 'actor="Mark Hamill" role="Luke Skywalker" movie="Star Wars"; actor="Harrison Ford" role="Han Solo" movie="Star Wars"; actor="Carrie Fisher" role="Princess Leia" movie="Star Wars"; actor="Alec Guinness" role="Obi-Wan Kenobi" movie="Star Wars"; actor="Peter Cushing" role="Grand Moff Tarkin" movie="Star Wars";'
+		query = 'actor="Mark Hamill" movie= movie=@ actor='
+
+		memes = parse.decode(known)
+		print('Known Tokens:', memes)
+		print()
+
+		print('Known String:', parse.encode(memes))
+		print()
+
+		from parse import MEMEBASE
+		parse.add('movies', memes)
+		print('Known Base:  ', MEMEBASE['movies'])
+		print()
+
+		print('Query Results:')
+		print(parse.encode(parse.qry('movies', parse.decode(query))).replace(';',";\n"))
+		print()
+		print()
