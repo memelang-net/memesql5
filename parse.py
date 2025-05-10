@@ -65,6 +65,9 @@ def decode(memestr: str) -> list[list[list]]:
 			meme[-1][3]=json.loads(part)
 			continue
 
+		# Desugar shorthand
+		part = re.sub(r'([a-zA-Z0-9_\$\#\~\@]*):([a-zA-Z0-9_\$\#\~\@]*)', r'\1= m!=# \2=@', part)
+
 		# Parse string outside quotes into R=A
 		for subpart in RE_DIV.split(part):
 			# space
@@ -81,10 +84,10 @@ def decode(memestr: str) -> list[list[list]]:
 
 			# Check operators
 			if ro in (None,''): ro=SPC
-			elif not OPR.get(ro): raise ValueError(f"Bad ro: {ro}")
+			elif ro not in OPR: raise ValueError(f"Bad ro: {ro}")
 
 			if ao in (None,''): ao=None
-			elif not OPR.get(ao): raise ValueError(f"Bad ao: {ao}")
+			elif ao not in OPR: raise ValueError(f"Bad ao: {ao}")
 
 			# Check values
 			if rv == '': rv = None
@@ -126,36 +129,44 @@ def alpamt(ao:str, av) -> str:
 # Compare two values
 def cmpv(c:str, e:str, v1, v2) -> bool:
 	if v1 is None or e is None: return True
-	if v2 is None: raise Exception(f'cmpv none {c} {v1}{e}{v2}')
+	if v2 is None: raise ValueError(f'cmpv none {c} {v1}{e}{v2}')
 	if c in COLSTR:
 		if e == '=': return (str(v1).lower() == str(v2).lower())
 		elif e == '!=': return (str(v1).lower() != str(v2).lower())
-		else: raise Exception(f'cmpv str opr {c} {v1}{e}{v2}')
-	elif not isinstance(v1, (int, float)) or not isinstance(v2, (int, float)): raise Exception(f'cmpv !num {c} {v1}{e}{v2}')
+		else: raise ValueError(f'cmpv str opr {c} {v1}{e}{v2}')
+	elif not isinstance(v1, (int, float)) or not isinstance(v2, (int, float)): raise TypeError(f'cmpv !num {c} {v1}{e}{v2}')
 	elif e == '=':  return (v2 == v1)
 	elif e == '!=': return (v2 != v1)
 	elif e == '>':  return (v2 > v1)
 	elif e == '>=': return (v2 >= v1)
 	elif e == '<':  return (v2 < v1)
 	elif e == '<=': return (v2 <= v1)
-	else: raise Exception(f'cmpv num opr {c} {v1}{e}{v2}')
+	else: raise ValueError(f'cmpv num opr {c} {v1}{e}{v2}')
 
 
 # Store memes as in-memory DB
-def add(memekey:str, memes: list[list[list]], mkeep:bool=True):
+def add(memeloc:str, memes: list[list[list]], mkeep:bool=True):
 	global M_VAL
 
-	if memekey not in MEMEBASE: MEMEBASE[memekey]=[]
+	if memeloc not in MEMEBASE: MEMEBASE[memeloc]=[]
 
 	for meme in memes:
 		mv = None
 		for ro, rv, ao, av in meme:
-			# M is specified
-			if v == 'm':
-				if ro != SPC or ra != '=' or not av: raise ValueError(f'add m {ro}{rv}{ao}{av}')
+			if rv is None: raise ValueError(f'Bad rv, cannot be empty')
+			if av is None: raise ValueError(f'Bad av for {rv}')
+			if ro != SPC: raise ValueError(f'Bad ro: {ro}{rv}{ao}{av}')
+			if ao != '=': raise ValueError(f'Bad ao: {ro}{rv}{ao}{av}')
+
+			if (isinstance(rv, str) and RE_VAR.match(rv[:1])) \
+			or (isinstance(av, str) and RE_VAR.match(av[:1])):
+				raise ValueError('add(): variables not allowed')
+
+			# m is specified
+			if rv == 'm':
 				if mkeep: mv = av
 				continue
-			# M empty, generate random
+			# m empty, generate random
 			elif not mv:
 				if not M_VAL:
 					import random
@@ -163,45 +174,61 @@ def add(memekey:str, memes: list[list[list]], mkeep:bool=True):
 				M_VAL += 1
 				mv = M_VAL
 
-			if rv is None: raise ValueError(f'Bad rv, cannot be empty')
-			if av is None: raise ValueError(f'Bad av for {rv}')
-			if ro is None: raise ValueError(f'Bad ro for {rv}')
-			if ao is None: raise ValueError(f'Bad ao for {rv}')
-
 			row = {'m':mv, 'r':rv, 'alp':None, 'amt':None}
 			row[alpamt('=', av)]=av
-			MEMEBASE[memekey].append(row)
+			MEMEBASE[memeloc].append(row)
 
 
 # Evaluate one query-pattern meme against rows (full join logic)
-def qry(memekey: str, pattern: list[list[list]]) -> list[list[list]]:
+def qry(memeloc: str, pattern: list[list[list]]) -> list[list[list]]:
 	results = []
 
-	if memekey not in MEMEBASE: raise ValueError('qry memekey')
+	if memeloc not in MEMEBASE: raise ValueError('qry memeloc')
 	if len(pattern) != 1: raise ValueError('qry pattern')
 
-	def dfs(idx, chosen, vcols, mv):
+	def dfs(idx:int, chosen:list, vcols:dict, me:str, mstack:list):
 		if idx == len(pattern[0]):
-			results.append(list(chosen))
+			results.append(chosen[:])
 			return
 
 		ro, rv, ao, av = pattern[0][idx]
 		rv = str(rv).lower()
-		me = '='
 
 		if isinstance(rv, str) and RE_VAR.match(rv[:1]):
-			me='!=' # join on different m
 			if rv in vcols: rv = vcols.get(rv)
 			else: raise Exception(f'Bad rv {rv}')
 
 		if isinstance(av, str) and RE_VAR.match(av[:1]):
-			me='!=' # join on different m
 			if av in vcols: av = vcols.get(av)
 			else: raise Exception(f'Bad av {av}')
 
 		acol = alpamt(ao, av)
 
-		for row in MEMEBASE[memekey]:
+		# explicit mv
+		if rv == 'm':
+			# !m
+			if ro == NOT:
+				if len(mstack) < 2 or ao or av: raise ValueError('Bad !m')
+				vcols2 = vcols.copy()
+				vcols2[MS] = mstack[-2]
+				dfs(idx + 1, chosen, vcols2, '=', mstack[:-1])
+
+			# on m= make a new mstack, no a/r
+			else: dfs(idx + 1, chosen, vcols.copy(), ao, mstack[:] + [av])
+
+			return # don't evaluate further on rv=m
+
+		# implicit mv
+		else:
+			mv = None
+			mstack2 = mstack[:]
+			if mstack2:
+				mv = mstack2[-1]
+				if not mv: mstack2.pop()
+
+		# Search for matching rows
+		for row in MEMEBASE[memeloc]:
+
 			if not cmpv('m', me, mv, row['m']): continue
 			if not cmpv('r', OPR[ro][SEQL], rv, row['r']): continue
 			if not cmpv(acol, OPR[ao][SEQL], av, row[acol]): continue
@@ -213,21 +240,24 @@ def qry(memekey: str, pattern: list[list[list]]) -> list[list[list]]:
 			vcols2[MS] = row['m']
 			vcols2[AS+str(row['r']).lower()] = row[acol]
 
+			# new mstack
+			mstack3 = mstack2[:]
+			if row['m']!=mv:
+				mstack3.append(row['m'])
+				chosen.append({'m':row['m'], 'r':'m', 'alp':None, 'amt':row['m']})
+
 			# Recurse
-			if me == '!=': chosen.append({'m':row['m'], 'r':'m', 'alp':None, 'amt':row['m']})
 			chosen.append(row)
-
-			dfs(idx + 1, chosen, vcols2, row['m'])
-
-			if me == '!=': chosen.pop()
+			dfs(idx + 1, chosen, vcols2, mstack3)
+			if row['m']!=mv: chosen.pop() # pop m=
 			chosen.pop()
 
-	dfs(0, [], {}, None)
+	dfs(0, [], {}, None, [])
 
 	# Convert satisfying row tuples back into meme structures
 	output = []
 	for combo in results:
-		meme_out = [[SPC, 'm', '=', combo[0]['m']]]
+		meme_out = []
 		for row in combo:
 			val = row['alp'] if row['alp'] is not None else row['amt']
 			meme_out.append([SPC, row['r'], '=', val])

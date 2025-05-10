@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
 	elif sys.argv[1]=='test':
 		known = 'actor="Mark Hamill" role="Luke Skywalker" movie="Star Wars"; actor="Harrison Ford" role="Han Solo" movie="Star Wars"; actor="Carrie Fisher" role="Princess Leia" movie="Star Wars"; actor="Alec Guinness" role="Obi-Wan Kenobi" movie="Star Wars"; actor="Peter Cushing" role="Grand Moff Tarkin" movie="Star Wars";'
-		query = 'actor="Mark Hamill" movie= movie=@ actor='
+		query = 'actor="Mark Hamill" movie:movie actor='
 
 		memes = parse.decode(known)
 		print('Known Tokens:', memes)
