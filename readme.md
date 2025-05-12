@@ -1,6 +1,6 @@
 # memesql5
 
-This is prototype Python/Postgres implementation of [Memelang v4](https://memelang.net/04/). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
+This is prototype Python/Postgres implementation of [Memelang v4](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
 
 | File | Purpose |
 |------|---------------------------------------------------------------------|
