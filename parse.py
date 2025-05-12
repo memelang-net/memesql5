@@ -1,32 +1,33 @@
 # Memelang.net | (c) HOLTWORK LLC | Patents Pending
 # Encode and decode Memelang string to list
-# pair = [r operator, r value, a operator, a value]
-# meme = pair list = [pair, ...]
-# memes = meme list = pair list list = [[pair, ...], ...]
+# ram = [r operator, r value, a operator, a value, m operator, m value]
+# meme = ram list = [ram, ...]
+# memes = meme list = ram list list = [[ram, ...], ...]
 
-import re, json
+import json, random, re, conf
 
 MEMEBASE = {}
 M_MIN = 1 << 20
 M_MAX = 1 << 62
-M_VAL = None
 
-SCOL, SEQL, SOUT = 0, 1, 2 			# name for each slot in OPR[opr] list
-BID, RID, AID = 'm', 'r', 'a'		# name for each column in OPR[opr][SCOL]
-END, SPC, NOT = ';', ' ', '!'		# Special characters
-AS, RS, MS = '@', '~', '#'			# Var symbols
+## ENCODE / DECODE
+
+RO, RV, AO, AV, MO, MV = 0, 1, 2, 3, 4, 5
+SEQL, SOUT = 0, 1 						# name for each slot in OPR[opr] list
+END, SPC, NOT = ';', ' ', '!'			# Special characters
+AS, RS, MS, MU = '@', '~', '#', '^'		# Var symbols
 
 OPR = { # operator characters and their settings
-	None	: (None,	None,	None),
-	END		: (None,	None,	END),
-	SPC		: (RID,		'=',	SPC),
-	NOT		: (RID,		'!=',	SPC+NOT),
-	'='		: (AID,		'=',	'='),
-	'!='	: (AID,		'!=',	'!='),
-	'>'		: (AID,		'>',	'>'),
-	'<'		: (AID,		'<',	'<'),
-	'>='	: (AID,		'>=',	'>='),
-	'<='	: (AID,		'<=',	'<='),
+	None	: (None,	None),
+	END		: (None,	END),
+	SPC		: ('=',		SPC),
+	NOT		: ('!=',	SPC+NOT),
+	'='		: ('=',		'='),
+	'!='	: ('!=',	'!='),
+	'>'		: ('>',		'>'),
+	'<'		: ('<',		'<'),
+	'>='	: ('>=',	'>='),
+	'<='	: ('<=',	'<='),
 }
 
 OPRSTR = {'=', '!='}
@@ -37,9 +38,12 @@ COLNUM = {'m', 'amt'}
 RE_DIV = re.compile(r'([\s;]+)') # Dividers between pairs
 RE_QOT = re.compile(r'("(?:(?:\\.)|[^"\\])*")') # String between quotes
 RE_NUM = re.compile(r'^[+-]?\d+(?:\.\d+)?$') # Matches non-numeric chars, must be string
-RE_ALP = re.compile(r'[^a-zA-Z0-9_\$\#\~\@]') # Complex string must be wrapped in quotes
-RE_VAR = re.compile(r'[\@\~\#\$]') # Variable symbols
-RE_PAR = re.compile(r"(!)?([a-zA-Z0-9_\$\#\~\@]*)(>=|<=|!=|=|>|<)?([a-zA-Z0-9_\$\#\~\@\.\-\+]*)") # !R>=A
+RE_ALP = re.compile(r'[^a-zA-Z0-9_\$\#\~\@\^]') # Complex string must be wrapped in quotes
+RE_VAR = re.compile(r'[\@\~\#\$\^]') # Variable symbols
+RE_PAR = re.compile(r"(!)?([a-zA-Z0-9_\$\#\~\@]*)(>=|<=|!=|=|>|<)?([a-zA-Z0-9_\$\#\~\@\.\-\+\^]*)") # !R>=A
+
+RE_RJR = re.compile(r'([a-zA-Z0-9_\$\#\~\@]*):([a-zA-Z0-9_\$\#\~\@]*)')
+RE_RMR = r'\1= m!=# \2=@'
 
 # Input: Memelang string as 'R=A R>A ="x y"; <=A !R=A'
 # Output: memes
@@ -51,6 +55,7 @@ def decode(memestr: str) -> list[list[list]]:
 	if len(memestr) == 0: raise Exception('Empty memestr')
 
 	memes, meme = [], []
+	mo, mv, md = '=', None, 0
 
 	# Split by quotes, skip inside the quotes, parse outside of the quotes
 	parts = RE_QOT.split(memestr)
@@ -61,20 +66,24 @@ def decode(memestr: str) -> list[list[list]]:
 		# Assign string inside quotes straight to ="value"
 		if p % 2 == 1:
 			if not meme: raise ValueError('Start quote')
-			elif meme[-1][2] not in OPRSTR: raise ValueError(f'Bad quote ao: {meme[-1][2]}""')
-			meme[-1][3]=json.loads(part)
+			elif meme[-1][AO] not in OPRSTR: raise ValueError(f'Bad quote ao: {meme[-1][2]}""')
+			meme[-1][AV]=json.loads(part)
 			continue
 
-		# Desugar shorthand
-		part = re.sub(r'([a-zA-Z0-9_\$\#\~\@]*):([a-zA-Z0-9_\$\#\~\@]*)', r'\1= m!=# \2=@', part)
-
 		# Parse string outside quotes into R=A
+
+		# Desugar shorthand
+		part = re.sub(RE_RJR, RE_RMR, part)
+
+		# Split by spaces
 		for subpart in RE_DIV.split(part):
-			# space
+
+			# space/end
 			if subpart == '' or re.fullmatch(RE_DIV, subpart):
 				if END in subpart:
 					if meme: memes.append(meme)
 					meme=[]
+					mo, mv, md = '=', None, 0
 				continue
 
 			# R=A
@@ -89,6 +98,18 @@ def decode(memestr: str) -> list[list[list]]:
 			if ao in (None,''): ao=None
 			elif ao not in OPR: raise ValueError(f"Bad ao: {ao}")
 
+			# m=
+			if rv == 'm':
+				if ro != SPC: raise ValueError(f"Bad {ro}m")
+				if len(str(av))>1 and av == mv: av = '#' # consecutive literals become variable
+				if ao != '=' or av != MS:
+					mo, mv = ao, av
+					if mv == MU:
+						if md<2: raise ValueError(f"Bad m{mo}{mv}")
+						md-=1
+					else: md+=1
+				continue
+
 			# Check values
 			if rv == '': rv = None
 			else:
@@ -101,7 +122,8 @@ def decode(memestr: str) -> list[list[list]]:
 				if OPR[ao][SEQL] not in OPRSTR: raise Exception(f"Bad ao: {ao} for {av}")
 				if RE_VAR.match(av[1:]): raise ValueError(f'Bad av: {av}')
 
-			meme.append([ro, rv, ao, av])
+			meme.append([ro, rv, ao, av, mo, mv])
+			mo, mv = '=', MS
 
 	if meme: memes.append(meme)
 
@@ -112,13 +134,20 @@ def decode(memestr: str) -> list[list[list]]:
 def encode(memes: list[list[list]]) -> str:
 	memestr = ''
 	for meme in memes:
-		for ro, rv, ao, av in meme:
+		for ro, rv, ao, av, mo, mv in meme:
+			if mo not in (None,'=') or mv not in (None, MS):
+				memestr += ' m' + OPR[mo][SOUT]
+				if mv is not None: memestr += (mv if isinstance(mv, str) and not RE_ALP.search(mv) else json.dumps(mv))
+
 			for o, v in ((ro, rv), (ao, av)):
-				if o: memestr += str(OPR[o][SOUT])
+				if o: memestr += OPR[o][SOUT]
 				if v is not None: memestr += (v if isinstance(v, str) and not RE_ALP.search(v) else json.dumps(v))
 		memestr+=END
 	return memestr.rstrip(END)
 
+
+
+## IN-MEMEORY DB
 
 # Choose a is 'alp' for str or 'amt' for numeric
 def alpamt(ao:str, av) -> str:
@@ -145,37 +174,35 @@ def cmpv(c:str, e:str, v1, v2) -> bool:
 
 
 # Store memes as in-memory DB
-def add(memeloc:str, memes: list[list[list]], mkeep:bool=True):
-	global M_VAL
+def add(memeloc:str, memes: list[list[list]]):
+	mval = None
 
 	if memeloc not in MEMEBASE: MEMEBASE[memeloc]=[]
 
 	for meme in memes:
 		mv = None
-		for ro, rv, ao, av in meme:
+		for ro, rv, ao, av, mo, _mv in meme:
 			if rv is None: raise ValueError(f'Bad rv, cannot be empty')
 			if av is None: raise ValueError(f'Bad av for {rv}')
 			if ro != SPC: raise ValueError(f'Bad ro: {ro}{rv}{ao}{av}')
 			if ao != '=': raise ValueError(f'Bad ao: {ro}{rv}{ao}{av}')
+			if mo != '=': raise ValueError(f'Bad mo: m{mo}{_mv}')
 
 			if (isinstance(rv, str) and RE_VAR.match(rv[:1])) \
 			or (isinstance(av, str) and RE_VAR.match(av[:1])):
-				raise ValueError('add(): variables not allowed')
+				raise ValueError('add(): variable not allowed')
 
-			# m is specified
-			if rv == 'm':
-				if mkeep: mv = av
-				continue
-			# m empty, generate random
-			elif not mv:
-				if not M_VAL:
-					import random
-					M_VAL = random.randrange(M_MIN, M_MAX)
-				M_VAL += 1
-				mv = M_VAL
+			if _mv != MS:
+				if isinstance(_mv, str) and RE_VAR.match(_mv[:1]):
+					raise ValueError('add(): variable not allowed')
+				elif _mv: mv = _mv # use specified m=123
+				else: # generate random m=456
+					if not mval: mval = random.randrange(M_MIN, M_MAX)
+					mval += 1
+					mv = mval
 
 			row = {'m':mv, 'r':rv, 'alp':None, 'amt':None}
-			row[alpamt('=', av)]=av
+			row[alpamt(None, av)]=av
 			MEMEBASE[memeloc].append(row)
 
 
@@ -186,55 +213,38 @@ def qry(memeloc: str, pattern: list[list[list]]) -> list[list[list]]:
 	if memeloc not in MEMEBASE: raise ValueError('qry memeloc')
 	if len(pattern) != 1: raise ValueError('qry pattern')
 
-	def dfs(idx:int, chosen:list, vcols:dict, me:str, mstack:list):
+	def dfs(idx:int, chosen:list, vcols:dict, mstack:list):
 		if idx == len(pattern[0]):
 			results.append(chosen[:])
 			return
 
-		ro, rv, ao, av = pattern[0][idx]
+		ram = pattern[0][idx][:]
+		mstack2 = mstack[:]
+		vcols2 = vcols.copy()
+
+		newm = ram[MO]!='=' or ram[MV] != MS
+
+		# Populate variables
+		for i in (RV, AV, MV):
+			if not isinstance(ram[i], str) or not RE_VAR.match(ram[i][:1]): continue
+			elif i == MV and ram[i] == MU: # m=^
+				mstack2.pop()
+				ram[i], vcols2[MS] = mstack2[-1], mstack2[-1]
+			elif ram[i] in vcols2: ram[i] = vcols2[ram[i]]
+			else: raise Exception(f'Bad var {ram[i]}')
+
+		ro, rv, ao, av, mo, mv = ram
 		rv = str(rv).lower()
-
-		if isinstance(rv, str) and RE_VAR.match(rv[:1]):
-			if rv in vcols: rv = vcols.get(rv)
-			else: raise Exception(f'Bad rv {rv}')
-
-		if isinstance(av, str) and RE_VAR.match(av[:1]):
-			if av in vcols: av = vcols.get(av)
-			else: raise Exception(f'Bad av {av}')
-
 		acol = alpamt(ao, av)
-
-		# explicit mv
-		if rv == 'm':
-			# !m
-			if ro == NOT:
-				if len(mstack) < 2 or ao or av: raise ValueError('Bad !m')
-				vcols2 = vcols.copy()
-				vcols2[MS] = mstack[-2]
-				dfs(idx + 1, chosen, vcols2, '=', mstack[:-1])
-
-			# on m= make a new mstack, no a/r
-			else: dfs(idx + 1, chosen, vcols.copy(), ao, mstack[:] + [av])
-
-			return # don't evaluate further on rv=m
-
-		# implicit mv
-		else:
-			mv = None
-			mstack2 = mstack[:]
-			if mstack2:
-				mv = mstack2[-1]
-				if not mv: mstack2.pop()
 
 		# Search for matching rows
 		for row in MEMEBASE[memeloc]:
 
-			if not cmpv('m', me, mv, row['m']): continue
+			if not cmpv('m', mo, mv, row['m']): continue
 			if not cmpv('r', OPR[ro][SEQL], rv, row['r']): continue
 			if not cmpv(acol, OPR[ao][SEQL], av, row[acol]): continue
 
 			# new var values
-			vcols2 = vcols.copy()
 			vcols2[AS] = row[acol]
 			vcols2[RS] = row['r']
 			vcols2[MS] = row['m']
@@ -242,25 +252,179 @@ def qry(memeloc: str, pattern: list[list[list]]) -> list[list[list]]:
 
 			# new mstack
 			mstack3 = mstack2[:]
-			if row['m']!=mv:
+			if newm:
 				mstack3.append(row['m'])
 				chosen.append({'m':row['m'], 'r':'m', 'alp':None, 'amt':row['m']})
 
 			# Recurse
 			chosen.append(row)
 			dfs(idx + 1, chosen, vcols2, mstack3)
-			if row['m']!=mv: chosen.pop() # pop m=
+			if newm: chosen.pop() # pop m=
 			chosen.pop()
 
-	dfs(0, [], {}, None, [])
+	dfs(0, [], {}, [])
 
 	# Convert satisfying row tuples back into meme structures
 	output = []
 	for combo in results:
 		meme_out = []
-		for row in combo:
-			val = row['alp'] if row['alp'] is not None else row['amt']
-			meme_out.append([SPC, row['r'], '=', val])
+		for row in combo: meme_out.append([SPC, row['r'], '=', row['alp'] if row['alp'] is not None else row['amt']])
 		output.append(meme_out)
 
 	return output
+
+
+
+## SQL DB
+# 'a' is a value stored as either 'alp' for str or 'amt' for int/float
+# 'r' is the relation of 'a' to the meme
+# 'm' is a meme identifier that groups r=a pairs
+
+def selectify(meme: list[list], table: str = None, t:int = 0) -> tuple[str, list]:
+
+	tm1 = 0
+	acol = 'alp'
+	table = table or DB['table']
+	selects, wheres, joins, groupbys, params, mstack = [], [], [], [], [], []
+	vcols = {}
+
+	for ro, rv, ao, av, mo, mv in meme:
+		joint = {'r':None, 'alp':None, 'amt':None, 'm':None}
+
+		# M
+		newm = mo!='=' or mv != MS
+		newg = newm
+
+		# R
+		rvl = rv.lower() if isinstance(rv, str) else rv
+		sel = f"""'{ro}' || t{t}.r || '=' """
+
+		# A as ALP/AMT
+		acol = alpamt(ao, av)
+		if acol == 'amt':
+			avl = av		
+			sel += f"""|| t{t}.amt"""
+		elif isinstance(av, str) and not RE_VAR.match(av[:1]):
+			avl = av.lower()
+			sel += f"""|| '"' || t{t}.alp || '"'"""
+		else:
+			avl = av
+			sel += f"""|| (CASE WHEN t{t}.amt IS NOT NULL THEN t{t}.amt::text ELSE '"' || t{t}.alp || '"' END)"""
+
+		# Where
+		for c, e, v in (('m', OPR[mo][SEQL], mv), ('r', OPR[ro][SEQL], rvl), (acol, OPR[ao][SEQL], avl)):
+			if v is None or not e: continue
+
+			# Expand variables
+			if isinstance(v, str) and RE_VAR.match(v[:1]):
+				if v not in vcols: raise ValueError(f'var {v}')
+
+				if c == 'm' and v == MU: # m=^ unjoin
+					mstack.pop()
+					tm1=mstack[-1]
+					vcols[MS] = f"t{tm1}.m"
+					v=MS
+					newg=False
+
+				col = f"LOWER(t{t}.{c})" if c in COLSTR else f"t{t}.{c}"
+				joint[c] = f"{col}{e}{vcols[v]}"
+
+			# Static value, equivicate
+			else:
+				col = f"LOWER(t{t}.{c})" if c in COLSTR else f"t{t}.{c}"
+				wheres.append(f"{col}{e}%s")
+				params.append(v)
+
+		# JOINING
+		# start with from
+		if not joins:
+			joins.append(f'FROM {table} t{t}')
+			newm, newg = True, True
+	
+		# new join
+		if all(v is None for v in joint.values()): raise Exception('join')
+		jands, jors = [], []
+		for col, cond in joint.items():
+			if cond: jands.append(cond)
+			else: jors.append(f"t{tm1}.{col}!=t{t}.{col}")
+
+		jandstr = ' AND '.join(jands)
+		jorstr = (' AND (' + ' OR '.join(jors) + ')') if jors else ''
+		joins.append(f"LEFT JOIN {table} t{t} ON {jandstr}{jorstr}")
+
+		# new m, group by m and select m=
+		if newm:
+			if newg: groupbys.append(f"t{t}.m")
+			selects.append(f"' m='")
+			selects.append(f"t{t}.m")
+			mstack.append(t)
+
+		# set @rel variable
+		if OPR[ro][SEQL] == '=' and rv is not None:
+			vcols[f'{AS}{rv}'] = f"LOWER(t{t}.alp)" if acol=='alp' else f"t{t}.amt"
+
+		vcols[AS] = f"t{t}.{acol}" if acol == 'amt' else f"LOWER(t{t}.{acol})"
+		vcols[RS] = f"LOWER(t{t}.r)"
+		vcols[MS] = f"t{t}.m"
+
+		# Select
+		selects.append(f"""string_agg(DISTINCT {sel}, '')""")
+
+		tm1=t
+		t+=1
+
+	if not joins: raise Exception('missing k=v')
+
+	joinstr = ' '.join(joins)
+	selectstr = ','.join(selects)
+	groupbystr = ','.join(groupbys)
+	wherestr = ('WHERE ' + ' AND '.join(wheres)) if wheres else ''
+
+	return f"SELECT CONCAT({selectstr}, '{END} ') AS v {joinstr} {wherestr} GROUP BY {groupbystr}", params
+
+
+def select(memes: list[list[list]], table: str = None) -> tuple[str, list]:
+	selects, params = [], []
+	for meme in memes:
+		qry_select, qry_params = selectify(meme, table)
+		selects.append(qry_select)
+		params.extend(qry_params)
+	return f"SELECT string_agg(v, '') AS vv FROM (" + ' UNION '.join(selects) + ")", params
+
+
+def insert (memes: list[list[list]], table: str = None) -> tuple[str, list]:
+	
+	table = table or DB['table']
+	rows, params = [], []
+	mval = None
+
+	for meme in memes:
+		mv = None
+		for ro, rv, ao, av, mo, _mv in meme:
+			if OPR[ro][SEQL] != '=': raise ValueError(f'bad ro {ro}')
+			elif ao != '=': raise ValueError(f'bad ao {ao}')
+			elif mo != '=': raise ValueError(f'bad mo {mo}')
+			elif rv is None: raise ValueError(f'no rv')
+			elif av is None: raise ValueError(f'no av')
+
+			if _mv == MS: pass
+			elif _mv: mv = int(_mv)
+			else:
+				if not mval: mval = random.randrange(M_MIN, M_MAX)
+				mval+=1
+				mv = mval
+			if not mv: raise Exception(f'insert mv')
+
+			rows.append('(%s,%s,%s,%s)')
+			params.extend([rv, None, None, mv])
+			if isinstance(av, str): params[-3]=av
+			else: params[-2]=av
+
+	if rows: return f"INSERT INTO {table} VALUES " + ','.join(rows) + " ON CONFLICT DO NOTHING", params
+
+	return None, []
+
+
+def morgify(sql: str, params: list) -> str:
+	for param in params: sql = sql.replace("%s", json.dumps(param), 1)
+	return sql

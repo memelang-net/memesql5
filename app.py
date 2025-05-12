@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import sys, parse, sql
+import sys, parse
 
 def dbget (memestr: str):
 	import db
-	return db.select(*sql.select(parse.decode(memestr)))
+	return db.select(*parse.select(parse.decode(memestr)))
 
 def dbadd (memestr: str):
 	import db
-	return db.exec(*sql.insert(parse.decode(memestr)))
+	return db.exec(*parse.insert(parse.decode(memestr)))
 
 
 if __name__ == "__main__":
@@ -19,9 +19,9 @@ if __name__ == "__main__":
 
 	elif sys.argv[1]=='qry':
 		memes = parse.decode(sys.argv[2])
-		sqlstr, params = sql.select(memes)
+		sqlstr, params = parse.select(memes)
 		print('TOKENS: ', memes)
-		print('SQL: ', sql.morgify(sqlstr, params))
+		print('SQL: ', parse.morgify(sqlstr, params))
 		print('RESULTS:')
 		print(str(dbget(sys.argv[2])).replace(';', '\n'))
 

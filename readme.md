@@ -10,7 +10,6 @@ This is prototype Python/Postgres implementation of [Memelang v4](https://memela
 | **parse.py** | Encode / decode Memelang strings into meme-token lists |
 | **readme.md** | Project overview (this file) |
 | **setup.py** | Python package settings |
-| **sql.py** | Encode a meme-token list into an SQL query |
 
 ## Installation
 
