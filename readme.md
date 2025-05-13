@@ -1,13 +1,14 @@
 # memesql5
 
-This is prototype Python/Postgres implementation of [Memelang v4](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
+This is prototype Python/Postgres implementation of [Memelang 4.1](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
 
 | File | Purpose |
 |------|---------------------------------------------------------------------|
 | **app.py** | Command-line interfaces |
 | **conf.py** | Postgres database configuration |
 | **db.py** | Postgres database helper functions |
-| **parse.py** | Encode / decode Memelang strings into meme-token lists |
+| **memelang.md** | Spec explaining the Memelang format |
+| **parse.py** | Encode / decode Memelang strings |
 | **readme.md** | Project overview (this file) |
 | **setup.py** | Python package settings |
 
