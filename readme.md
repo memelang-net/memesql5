@@ -1,4 +1,4 @@
-# memesql5
+# memesql4.1
 
 This is prototype Python/Postgres implementation of [Memelang 4.1](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
 
@@ -22,7 +22,7 @@ Installation on Ubuntu:
 	sudo systemctl enable postgresql
 	
 	# Download files
-	git clone https://github.com/memelang-net/memesql5.git memesql
+	git clone https://github.com/memelang-net/memesql4.1.git memesql
 	cd memesql
 
 	# Edit conf.py as you like
