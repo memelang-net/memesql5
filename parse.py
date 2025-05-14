@@ -4,7 +4,7 @@
 # meme = ram list = [ram, ...]
 # memes = meme list = ram list list = [[ram, ...], ...]
 
-import json, random, re, conf
+import json, random, re
 
 MEMEBASE = {}
 M_MIN = 1 << 20
@@ -15,7 +15,7 @@ M_MAX = 1 << 62
 RO, RV, AO, AV, MO, MV = 0, 1, 2, 3, 4, 5
 SEQL, SOUT = 0, 1 									# name for each slot in OPR[opr] list
 END, SPC, NOT, CLS, POP = ';', ' ', '!', ']', '=^'	# Special characters
-AS, RS, MS = '@', '~', '#'							# Var symbols
+AS, RS, MS = '@', '%', '#'							# Var symbols
 
 OPR = { # operator characters and their settings
 	None	: (None,	None),
@@ -39,11 +39,11 @@ COLNUM = {'m', 'amt'}
 RE_DIV = re.compile(r'([\s;]+)') # Dividers between pairs
 RE_QOT = re.compile(r'("(?:(?:\\.)|[^"\\])*")') # String between quotes
 RE_NUM = re.compile(r'^[+-]?\d+(?:\.\d+)?$') # Matches non-numeric chars, must be string
-RE_ALP = re.compile(r'[^a-zA-Z0-9_\$\#\~\@]') # Complex string must be wrapped in quotes
-RE_VAR = re.compile(r'[\@\~\#]') # Variable symbols
-RE_PAR = re.compile(r"(!)?([a-zA-Z0-9_\#\~\@]*)(>=|<=|!=|=\^|=|>|<)?([a-zA-Z0-9_\#\~\@\.\-\+]*)") # !R>=A
+RE_ALP = re.compile(r'[^a-zA-Z0-9_\$\#\%\@]') # Complex string must be wrapped in quotes
+RE_VAR = re.compile(r'[\@\%\#]') # Variable symbols
+RE_PAR = re.compile(r"(!)?([a-zA-Z0-9_\#\%\@]*)(>=|<=|!=|=\^|=|>|<)?([a-zA-Z0-9_\#\%\@\.\-\+]*)") # !R>=A
 
-RE_RJR = re.compile(r'([a-zA-Z0-9_\$\#\~\@]*)\[([a-zA-Z0-9_\$\#\~\@]*)')
+RE_RJR = re.compile(r'([a-zA-Z0-9_\$\#\%\@]*)\[([a-zA-Z0-9_\$\#\%\@]*)')
 RE_RMR = r'\1= m!=# \2=@'
 
 # Input: Memelang string as 'R=A R>A ="x y"; <=A !R=A'
@@ -150,7 +150,7 @@ def encode(memes: list[list[list]]) -> str:
 
 
 
-## IN-MEMEORY DB
+## IN-MEMORY DB
 
 # Choose a is 'alp' for str or 'amt' for numeric
 def alpamt(ao:str, av) -> str:
@@ -283,11 +283,10 @@ def qry(memeloc: str, pattern: list[list[list]]) -> list[list[list]]:
 # 'r' is the relation of 'a' to the meme
 # 'm' is a meme identifier that groups r=a pairs
 
-def selectify(meme: list[list], table: str = None, t:int = 0) -> tuple[str, list]:
+def selectify(meme: list[list], table: str = 'meme', t:int = 0) -> tuple[str, list]:
 
 	tm1 = 0
 	acol = 'alp'
-	table = table or DB['table']
 	selects, wheres, joins, groupbys, params, mstack = [], [], [], [], [], []
 	vcols = {}
 
@@ -386,7 +385,7 @@ def selectify(meme: list[list], table: str = None, t:int = 0) -> tuple[str, list
 	return f"SELECT CONCAT({selectstr}, '{END} ') AS v {joinstr} {wherestr} GROUP BY {groupbystr}", params
 
 
-def select(memes: list[list[list]], table: str = None) -> tuple[str, list]:
+def select(memes: list[list[list]], table: str = 'meme') -> tuple[str, list]:
 	selects, params = [], []
 	for meme in memes:
 		qry_select, qry_params = selectify(meme, table)
@@ -395,9 +394,8 @@ def select(memes: list[list[list]], table: str = None) -> tuple[str, list]:
 	return f"SELECT string_agg(v, '') AS vv FROM (" + ' UNION '.join(selects) + ")", params
 
 
-def insert (memes: list[list[list]], table: str = None) -> tuple[str, list]:
+def insert (memes: list[list[list]], table: str = 'meme') -> tuple[str, list]:
 	
-	table = table or DB['table']
 	rows, params = [], []
 	mval = None
 

@@ -1,4 +1,4 @@
-# Memelang 4.1
+# Memelang v5
 
 Memelang is an elegant and powerful query language with broad applicability in structured data querying, knowledge graph handling, retrieval-augmented generation, and semantic data processing.
 
@@ -87,7 +87,7 @@ m=123 actor="Mark Hamill" movie="Star Wars" m=456 movie="Star Wars" actor="Harri
 R-relations or A-values may be certain variable symbols. Variables *cannot* be wrapped in quotes.
 
 * `@` Last matching A‑value
-* `~` Last matching R‑relation
+* `%` Last matching R‑relation
 * `#` Current M-identifier
 
 ```
@@ -101,10 +101,10 @@ R1= R2=@;
 R1= @=A2;
 
 // The first R-relation equals the second A-value
-=A1 R2=~;
+=A1 R2=%;
 
 // The pattern is run twice (redundant)
-R1=A1 ~=@;
+R1=A1 %=@;
 ```
 
 ### M-Joins
@@ -114,7 +114,7 @@ More complex joins are made by specifying `m` and using the `#` variable.
 * `m=#` is implicit in every `R=A` pair, which are assumed to belong to the current M-identifier
 * `m!=#` joins to any other meme, excluding the current one
 * `m= ` joins to any meme, including the current one
-* `m=^#` (shorthand `]`) sets `m` and `#` to the *previous* M-identifer, used to unjoin and branch queries.
+* `m=^#` (shorthand `]`) sets `m` and `#` to the *previous* M-identifier, used to unjoin and branch queries.
 
 ```
 // Join two different memes where R1 and R2 have the same A-value (equivalent to R1[R2)
