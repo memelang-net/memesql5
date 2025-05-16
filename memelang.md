@@ -4,11 +4,11 @@ Memelang is an elegant and powerful query language with broad applicability in s
 
 ### Syntax
 
-A meme is analogous to a relational database row. A meme comprises key-value pairs, separated by spaces, starting with an arbitrary integer M-identifier, and ending with a semicolon: `m=123 R1=A1 R2=A2;`
+A meme is analogous to a relational database row. A meme comprises key-value pairs, separated by spaces, starting with an arbitrary integer M-identifier, and ending with a semicolon: `m=123 R1=A1 R2=A2;`.
 
 * ***R-relations*** are alphanumeric keys analogous to relational database columns.
 * ***A-values*** are integers, decimals, or strings analogous to relational database cell values.
-* A-value strings containing `[^A-Za-z0-9_]` characters are double-quoted `="John \"Jack\" Kennedy"`
+* A-value strings containing `[^A-Za-z0-9_]` characters are double-quoted `="John ""Jack"" Kennedy"`.
 * Comments are prefixed with double forward slashes `//`.
 
 ```
@@ -26,13 +26,13 @@ Search queries are partially specified Memelang statements. Empty parts of the s
 * Empty R-relation and A-value (` = `) queries for all pairs in the meme.
 
 ```
-// Example query for all movies with Mark Hamill as an actor
+// Query for all movies with Mark Hamill as an actor
 actor="Mark Hamill" movie=;
 
-// Example query for all relations involving Mark Hamill
+// Query for all relations involving Mark Hamill
 ="Mark Hamill";
 
-// Example query for all relations and values from all memes relating to Mark Hamill:
+// Query for all relations and values from all memes relating to Mark Hamill:
 ="Mark Hamill" =;
 ```
 
@@ -45,31 +45,36 @@ firstName=Joe lastName!="David-Smith" height>=1.6 width<2 weight!=150;
 R-relations may be prefixed with `!` for "relation must not equal."
 
 ```
-// Example query for Mark Hamill's non-acting relations
+// Query for Mark Hamill's non-acting relations
 !actor="Mark Hamill";
 
-// Which is distinct from an actor who is not Mark Hamill
+// Query for an actor who is not Mark Hamill
 actor!="Mark Hamill";
+```
+
+For an "or" query with multiple values, use a comma-separated list. Only string values, not numeric values may be included in an or-list.
+```
+actor,producer=Mark,"Mark Hamill"
 ```
 
 ### A-Joins
 
-Analogous to relational database joins, using `R1[R2` allows for queries matching multiple memes where the A-value for `R1` equals the A-value for `R2`. Open brackets do ***not*** need to be closed.
+Analogous to relational database joins, using `R1[R2` allows for queries matching multiple memes where the A-value for `R1` equals the A-value for `R2`. Open brackets need ***not*** be closed, a semicolon closes all brackets.
 
 ```
 // Generic example
 R1=A1 R2[R3 R4>A4 A5=;
 
-// Example query for all of Mark Hamill's costars
+// Query for all of Mark Hamill's costars
 actor="Mark Hamill" movie[movie actor=;
 
-// Example query for all movies in which both Mark Hamill and Carrie Fisher act together
+// Query for all movies in which both Mark Hamill and Carrie Fisher act together
 actor="Mark Hamill" movie[movie actor="Carrie Fisher";
 
-// Example query for anyone who is both an actor and a producer
+// Query for anyone who is both an actor and a producer
 actor[producer;
 
-// Example query for a second cousin: child's parent's cousin's child
+// Query for a second cousin: child's parent's cousin's child
 child= parent[cousin parent[child;
 
 // Join any A-Value from the current meme to that A-Value in any another meme
@@ -105,15 +110,18 @@ R1= @=A2;
 
 // The pattern is run twice (redundant)
 R1=A1 %=@;
+
+// The second A-value may be Jeff or the previous A-value
+R1=A1 R2=Jeff,@;
 ```
 
 ### M-Joins
 
 More complex joins are made by specifying `m` and using the `#` variable.
 
-* `m=#` is implicit in every `R=A` pair, which are assumed to belong to the current M-identifier
-* `m!=#` joins to any other meme, excluding the current one
-* `m= ` joins to any meme, including the current one
+* `m=#` is implicit in every `R=A` pair, which are assumed to belong to the current M-identifier.
+* `m!=#` joins to any other meme, excluding the current one.
+* `m= ` joins to any meme, including the current one.
 * `m=^#` (shorthand `]`) sets `m` and `#` to the *previous* M-identifier, used to unjoin and branch queries.
 
 ```
@@ -134,7 +142,7 @@ R1= m!=# R2=@ R3= m!=# R4=@ m=^# m=^# R5=;
 // Join two different memes on R1=R2, unjoin, then join the first meme to another where R4=R5
 R1= m!=# R2=@ R3= m=^# R4= m!=# R5=@;
 
-// Query for a meta-meme. R2's A-value is R1's M-identifier
+// Query for a meta-meme, R2's A-value is R1's M-identifier
 R1=A1 m= R2=#
 ```
 
