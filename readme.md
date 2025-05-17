@@ -1,6 +1,6 @@
 # memesql5
 
-This is prototype Python/Postgres implementation of [Memelang v5](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
+This is prototype Python-Postgres implementation of [Memelang v5](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string. Contact [info@memelang.net](mailto:info@memelang.net).
 
 | File | Purpose |
 |------|---------------------------------------------------------------------|
@@ -47,7 +47,7 @@ Installation on Ubuntu:
 	python3 ./app.py q 'student=JohnAdams ='
 
 	# OUTPUT:
-	b=1234 student="JohnAdams" college="Harvard"
+	m=1234 student="JohnAdams" college="Harvard"
 
 ## Legal
 

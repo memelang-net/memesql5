@@ -1,15 +1,20 @@
 # Memelang v5
 
-Memelang is an elegant and powerful query language with broad applicability in structured data querying, knowledge graph handling, retrieval-augmented generation, and semantic data processing.
+Memelang is an concise query language for structured data, knowledge graphs, retrieval-augmented generation, and semantic data.
 
-### Syntax
+### Memes
 
-A meme is analogous to a relational database row. A meme comprises key-value pairs, separated by spaces, starting with an arbitrary integer M-identifier, and ending with a semicolon: `m=123 R1=A1 R2=A2;`.
+A meme comprises key-value pairs separated by spaces, starting with `m=int`, and ending with a semicolon. A meme is analogous to a relational database row.
 
-* ***R-relations*** are alphanumeric keys analogous to relational database columns.
-* ***A-values*** are integers, decimals, or strings analogous to relational database cell values.
-* A-value strings containing `[^A-Za-z0-9_]` characters are double-quoted `="John ""Jack"" Kennedy"`.
-* Comments are prefixed with double forward slashes `//`.
+```
+m=123 R1=A1 R2=A2 R3=A3;
+```
+
+* ***M-identifier***: an arbitrary integer in the form `m=123`, analogous to a primary key
+* ***R-relation***: an alphanumeric key analogous to a database column
+* ***A-value***: an integer, decimal, or string analogous to a database cell value
+* Non-alphanumeric strings are CSV-style double-quoted `="John ""Jack"" Kennedy"`
+* Comments are prefixed with double forward slashes `//`
 
 ```
 // Example memes for the Star Wars cast
@@ -20,10 +25,10 @@ m=789 actor="Carrie Fisher" role=Leia movie="Star Wars" rating=4.2;
 
 ### Queries
 
-Search queries are partially specified Memelang statements. Empty parts of the statement are wildcards. 
-* Empty A-value queries the specified R-relation for any A-value. 
-* Empty R-relation queries the specified A-value for any R-relation. 
-* Empty R-relation and A-value (` = `) queries for all pairs in the meme.
+Queries are partial memes with empty parts as wildcards:
+* Empty A-values retrieve all values for the specified R-relation
+* Empty R-relations retrieve all relations for the specified A-value
+* Empty R-relations and A-values (` = `) retrieve all pairs in the meme
 
 ```
 // Query for all movies with Mark Hamill as an actor
@@ -36,13 +41,27 @@ actor="Mark Hamill" movie=;
 ="Mark Hamill" =;
 ```
 
-String A-values use `=` and `!=` operators. Numeric A-values use standard comparison operators `=` `>`, `>=`, `<`, `<=`, and `!=`. Examples:
+A-value operators:
+* String: `=` `!=`
+* Numeric: `=` `!=` `>` `>=` `<` `<=`
 
 ```
-firstName=Joe lastName!="David-Smith" height>=1.6 width<2 weight!=150;
+firstName=Joe;
+lastName!="David-Smith";
+height>=1.6;
+width<2;
+weight!=150;
 ```
 
-R-relations may be prefixed with `!` for "relation must not equal."
+Comma-separated values produce an ***OR*** list:
+
+```
+// Query for (actor OR producer) = (Mark OR "Mark Hamill")
+actor,producer=Mark,"Mark Hamill"
+```
+
+R-relation operators:
+* `!` negates the relation name
 
 ```
 // Query for Mark Hamill's non-acting relations
@@ -50,16 +69,15 @@ R-relations may be prefixed with `!` for "relation must not equal."
 
 // Query for an actor who is not Mark Hamill
 actor!="Mark Hamill";
+
+// Query all relations excluding actor and producer for Mark Hamill
+!actor,producer="Mark Hamill"
 ```
 
-For an "or" query with multiple values, use a comma-separated list. Only string values, not numeric values may be included in an or-list.
-```
-actor,producer=Mark,"Mark Hamill"
-```
 
 ### A-Joins
 
-Analogous to relational database joins, using `R1[R2` allows for queries matching multiple memes where the A-value for `R1` equals the A-value for `R2`. Open brackets need ***not*** be closed, a semicolon closes all brackets.
+Open brackets `R1[R2` join memes with equal `R1` and `R2` A-values. Open brackets need **not** be closed, a semicolon closes all brackets.
 
 ```
 // Generic example
@@ -77,7 +95,7 @@ actor[producer;
 // Query for a second cousin: child's parent's cousin's child
 child= parent[cousin parent[child;
 
-// Join any A-Value from the current meme to that A-Value in any another meme
+// Join any A-Value from the present meme to that A-Value in another meme
 R1=A1 [ R2=A2
 ```
 
@@ -89,7 +107,7 @@ m=123 actor="Mark Hamill" movie="Star Wars" m=456 movie="Star Wars" actor="Harri
 
 ### Variables
 
-R-relations or A-values may be certain variable symbols. Variables *cannot* be wrapped in quotes.
+R-relations and A-values may be certain variable symbols. Variables *cannot* be inside quotes.
 
 * `@` Last matching A‑value
 * `%` Last matching R‑relation
@@ -117,27 +135,29 @@ R1=A1 R2=Jeff,@;
 
 ### M-Joins
 
-More complex joins are made by specifying `m` and using the `#` variable.
+Explicit joins are controlled using `m` and `#`.
 
-* `m=#` is implicit in every `R=A` pair, which are assumed to belong to the current M-identifier.
-* `m!=#` joins to any other meme, excluding the current one.
-* `m= ` joins to any meme, including the current one.
-* `m=^#` (shorthand `]`) sets `m` and `#` to the *previous* M-identifier, used to unjoin and branch queries.
+* `m=#` present meme (implicit default)
+* `m!=#` join to a different meme
+* `m= ` join to any meme (including the present)
+* `m=^#` (or `]`) resets `m` and `#` to the *previous* meme, acts as *un*join
 
 ```
 // Join two different memes where R1 and R2 have the same A-value (equivalent to R1[R2)
 R1= m!=# R2=@;
 
-// Join any memes (including the current one) where R1 and R2 have the same A-value
+// Join any memes (including the present one) where R1 and R2 have the same A-value
 R1= m= R2=@;
 
-// Join two different memes, unjoin, join a third meme (two equivalent statements)
+// Join two different memes, unjoin, join a third meme (equivalent statements)
 R1[R2] R3[R4;
 R1= m!=# R2=@ m=^# R3= m!=# R4=@;
 
-// Unjoins may be sequential
+// Unjoins may be sequential (equivalent statements)
 R1[R2 R3[R4]] R5=;
 R1= m!=# R2=@ R3= m!=# R4=@ m=^# m=^# R5=;
+R1= m!=# R2=@ R3= m!=# R4=@ m=^# ] R5=;
+R1= m!=# R2=@ R3= m!=# R4=@ ]] R5=;
 
 // Join two different memes on R1=R2, unjoin, then join the first meme to another where R4=R5
 R1= m!=# R2=@ R3= m=^# R4= m!=# R5=@;
@@ -146,6 +166,21 @@ R1= m!=# R2=@ R3= m=^# R4= m!=# R5=@;
 R1=A1 m= R2=#
 ```
 
+### SQL Comparisons
+
+Memelang queries are significantly shorter and clearer than equivalent SQL queries.
+
+```
+movie="Star Wars" actor= role= rating>4;
+SELECT actor, role FROM memes WHERE movie = 'Star Wars' AND rating > 4;
+
+role="Luke Skywalker","Han Solo" actor=;
+SELECT actor FROM movies WHERE role IN ('Luke Skywalker', 'Han Solo');
+
+actor="Mark Hamill","Harrison Ford" movie[movie actor=
+SELECT m1.actor, m1.movie, m2.actor FROM movies m1 JOIN movies m2 ON m1.movie = m2.movie WHERE m1.actor IN ('Mark Hamill', 'Harrison Ford') AND m2.actor NOT IN ('Mark Hamill', 'Harrison Ford');
+```
+
 ### About
 
-Memelang was created by [Bri Holt](https://en.wikipedia.org/wiki/Bri_Holt) and first disclosed in a [2023 U.S. Provisional Patent application](https://patents.google.com/patent/US20250068615A1). Copyright 2025 HOLTWORK LLC. Contact [info@memelang.net](mailto:info@memelang.net).
+Memelang was created by [Bri Holt](https://en.wikipedia.org/wiki/Bri_Holt) and first disclosed in a [2023 U.S. Provisional Patent application](https://patents.google.com/patent/US20250068615A1). ©2025 HOLTWORK LLC. Contact [info@memelang.net](mailto:info@memelang.net).
