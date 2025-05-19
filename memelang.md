@@ -1,10 +1,10 @@
 # Memelang v5
 
-Memelang is an concise query language for structured data, knowledge graphs, retrieval-augmented generation, and semantic data.
+Memelang is a concise query language for structured data, knowledge graphs, retrieval-augmented generation, and semantic data.
 
 ### Memes
 
-A meme comprises key-value pairs separated by spaces, starting with `m=int`, and ending with a semicolon. A meme is analogous to a relational database row.
+A ***meme*** comprises key-value pairs separated by spaces and is analogous to a relational database row.
 
 ```
 m=123 R1=A1 R2=A2 R3=A3;
@@ -13,7 +13,8 @@ m=123 R1=A1 R2=A2 R3=A3;
 * ***M-identifier***: an arbitrary integer in the form `m=123`, analogous to a primary key
 * ***R-relation***: an alphanumeric key analogous to a database column
 * ***A-value***: an integer, decimal, or string analogous to a database cell value
-* Non-alphanumeric strings are CSV-style double-quoted `="John ""Jack"" Kennedy"`
+* Non-alphanumeric A-values are CSV-style double-quoted `="John ""Jack"" Kennedy"`
+* Memes are ended with a semicolon
 * Comments are prefixed with double forward slashes `//`
 
 ```
@@ -130,7 +131,7 @@ R1= @=A2;
 R1=A1 %=@;
 
 // The second A-value may be Jeff or the previous A-value
-R1=A1 R2=Jeff,@;
+R1= R2=Jeff,@;
 ```
 
 ### M-Joins
@@ -140,7 +141,7 @@ Explicit joins are controlled using `m` and `#`.
 * `m=#` present meme (implicit default)
 * `m!=#` join to a different meme
 * `m= ` join to any meme (including the present)
-* `m=^#` (or `]`) resets `m` and `#` to the *previous* meme, acts as *un*join
+* `m=^#` (or `]`) resets `m` and `#` to the previous meme, acts as *unjoin*
 
 ```
 // Join two different memes where R1 and R2 have the same A-value (equivalent to R1[R2)
@@ -177,8 +178,8 @@ SELECT actor, role FROM memes WHERE movie = 'Star Wars' AND rating > 4;
 role="Luke Skywalker","Han Solo" actor=;
 SELECT actor FROM movies WHERE role IN ('Luke Skywalker', 'Han Solo');
 
-actor="Mark Hamill","Harrison Ford" movie[movie actor=
-SELECT m1.actor, m1.movie, m2.actor FROM movies m1 JOIN movies m2 ON m1.movie = m2.movie WHERE m1.actor IN ('Mark Hamill', 'Harrison Ford') AND m2.actor NOT IN ('Mark Hamill', 'Harrison Ford');
+producer,actor="Mark Hamill","Harrison Ford" movie[movie actor=
+SELECT m1.actor, m1.movie, m2.actor FROM movies m1 JOIN movies m2 ON m1.movie = m2.movie WHERE m1.actor IN ('Mark Hamill', 'Harrison Ford') or m1.producer IN ('Mark Hamill', 'Harrison Ford');
 ```
 
 ### About
