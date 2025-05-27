@@ -1,3 +1,5 @@
+***This repo is depriciated. Click here for the new [memesql6](https://github.com/memelang-net/memesql6)***
+
 # memesql5
 
 This is prototype Python-Postgres implementation of [Memelang v5](memelang.md). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string. Contact [info@memelang.net](mailto:info@memelang.net).
